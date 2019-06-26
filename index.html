@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script src="../assets/js/jquery-3.3.1.min.js"></script>
+<meta http-equiv="Cache-control" content="no-cache">
+<meta http-equiv="Expires" content="-1">
+
+
+<style>
+#divLog{
+	width:100%;
+	height:400px;
+	overflow:auto;
+	font-family: monospace;
+	font-size:10pt;
+	background-color:aqua;
+	color:blue;
+}
+</style>
+
+<script>
+
+const MAIN_IP = "192.168.0.34";   // ip of webservice
+
+const CON_YES 	= 1;
+const CON_NO 	= 2;
+const CON_TRY 	= 3;
+
+
+
+$(document).ready(function() {
+
+	
+	var bsWS = null;		
+	
+	
+	window.WebSocket = window.WebSocket || window.MozWebSocket;
+	
+	var bsURL = "ws://" + MAIN_IP + ":1234";
+
+	var bsConStat = CON_NO;
+
+	setInterval(function () {bsCheckConnect();}, 2000);
+	bsCheckConnect();
+
+	function bsCheckConnect() {
+		switch (bsConStat) {
+			case CON_YES 	: 		
+				// logIt("bsWS:Connected");
+				break;
+				
+			case CON_TRY 	: 		
+				// logIt("bsWS:Trying");
+				break;
+			
+			case CON_NO	:
+				// logIt("bsWS:Disconnected");
+				bsTryConnect();
+				break;
+		}
+	}
+
+	function bsTryConnect() {
+		bsConStat = CON_TRY;
+		logIt("Attempting Connection ..");
+		bsWS = new WebSocket(bsURL);
+		
+		bsWS.onopen = function(ev) { // connection is open 
+			logIt("Connected to bsURL");
+			bsConStat = CON_YES;
+		}	
+
+		bsWS.onmessage = function(ev) {
+			try {
+				var ret = JSON.parse(ev.data);
+			} catch (e) {
+				logIt('This doesn\'t look like a valid JSON: ',ev.data);
+				return;
+			}		
+			logIt("Received:" + JSON.stringify(ret));
+		};
+			
+		bsWS.onerror	= function(ev){ 
+			bsConStat = CON_NO;
+		}; 
+		bsWS.onclose 	= function(ev){ 
+			bsConStat = CON_NO;
+		}; 
+
+	
+	}	
+
+	
+
+	$("#btCmd").click(function(){
+		var cmd = $("#selCmd").val();
+		var params = $("#txPars").val();
+		
+		req = {
+			command	:	cmd
+		,	params	:	params
+		};
+		bsWS.send(JSON.stringify(req));
+	
+	});	
+	
+	function logIt(s) {
+		$("#divLog").html($("#divLog").html() + "<br/>" + s);
+		$('#divLog').scrollTop($('#divLog')[0].scrollHeight);
+	}
+	
+	
+});
+</script>
+
+
+</head>
+
+<body>
+<select id="selCmd">
+	<option value="accept">accept</option>
+	<option value="callstat">callstat</option>
+	<option value="dial">dial</option>
+	<option value="hangup">hangup</option>
+	<option value="hold">hold</option>
+	<option value="line">line</option>
+	<option value="listcalls">listcalls</option>
+	<option value="resume">resume</option>
+	<option value="transfer">transfer</option>
+</select>
+<input type=text id="txPars">
+<input type=button value="Cmd" id="btCmd">
+<div id="divLog"></div>
+</body>
+</html>
+
+
